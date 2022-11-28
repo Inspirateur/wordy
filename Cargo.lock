@@ -1922,5 +1922,6 @@ dependencies = [
  "image",
  "itertools",
  "palette",
+ "rand",
  "serenity",
 ]

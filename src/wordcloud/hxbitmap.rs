@@ -1,8 +1,9 @@
 use std::{ops::{Shl, Shr}, fmt::Display, vec};
 use anyhow::{Result, anyhow};
-use fontdue::Metrics;
 use itertools::{iproduct, enumerate};
-use super::util::{bits, next_multiple};
+use super::{util::{bits, next_multiple}, ring_reader::RingReader};
+use rand::thread_rng;
+use rand::seq::SliceRandom;
 pub const CHARS: [&str; 2] = [" ", "█"];
 // Horizontally Accelerated Bitmap
 #[derive(Clone)]
@@ -16,14 +17,19 @@ pub struct HXBitmap {
     // _w/usize::BITS
     vec_w: usize,
     data: Vec<usize>,
+    // efficiently spreads content around
+    poses: RingReader<(usize, usize)>
 }
 
 impl HXBitmap {
     pub fn new(width: usize, height: usize) -> Self {
         let _w = next_multiple(width, usize::BITS as usize);
         let vec_w = _w/usize::BITS as usize;
+        let mut poses = Vec::from_iter(iproduct!(0..vec_w, 0..(height-3)));
+        poses.shuffle(&mut thread_rng());
         Self {
-            width, height, _w, vec_w, data: vec![0; vec_w*height]
+            width, height, _w, vec_w, data: vec![0; vec_w*height],
+            poses: RingReader::new(poses)
         }
     }
 
@@ -103,14 +109,17 @@ impl HXBitmap {
             ));
         }
         let others = other.h_offsets();
-        for (vec_x, y) in iproduct!(0..(self.vec_w-other.vec_w), 0..(self.height-other.height)) {
-            for (dx, other) in enumerate(&others) {
-                if vec_x*usize::BITS as usize+dx >= self.width {
-                    break;
-                }
-                if !self.overlaps(other, vec_x, y) {
-                    self.add(other, vec_x, y);
-                    return Ok((vec_x*usize::BITS as usize + dx, y));
+        while let Some((vec_x, y)) = self.poses.next() {
+            if y+other.height < self.height {
+                for (dx, other) in enumerate(&others) {
+                    if vec_x*usize::BITS as usize+dx >= self.width {
+                        break;
+                    }
+                    if !self.overlaps(other, vec_x, y) {
+                        self.add(other, vec_x, y);
+                        self.poses.reset();
+                        return Ok((vec_x*usize::BITS as usize + dx, y));
+                    }
                 }
             }
         }
@@ -128,7 +137,8 @@ impl Shl<u32> for HXBitmap {
             height: self.height,
             _w: self._w,
             vec_w: self.vec_w,
-            data: self.data.into_iter().map(|v| v << rhs).collect()
+            data: self.data.into_iter().map(|v| v << rhs).collect(),
+            poses: self.poses.clone()
         }
     }
 }
@@ -143,7 +153,8 @@ impl Shr<u32> for HXBitmap {
             height: self.height,
             _w: self._w,
             vec_w: self.vec_w,
-            data: self.data.into_iter().map(|v| v >> rhs).collect()
+            data: self.data.into_iter().map(|v| v >> rhs).collect(),
+            poses: self.poses.clone()
         }
     }
 }

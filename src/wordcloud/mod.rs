@@ -6,4 +6,5 @@ mod indexed_chars;
 mod text;
 mod image;
 mod rasterisable;
+mod ring_reader;
 pub use wordcloud::{wordcloud, Token};
