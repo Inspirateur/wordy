@@ -26,7 +26,7 @@ impl WorldCloud {
         match self.bitmap.place(bitmap) {
             Ok(pos) => {
                 token.draw(&mut self.image, pos);
-                println!("Placed {} at {:?}", token, pos);
+                println!("Placed `{}` at {:?}", token, pos);
                 true
             },
             Err(err) => {

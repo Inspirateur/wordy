@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use image::{open, imageops::FilterType, GenericImage, RgbaImage, DynamicImage, GenericImageView};
 use itertools::Itertools;
+use std::path::Path;
 use super::{rasterisable::Rasterisable, hxbitmap::HXBitmap};
 
 pub struct Image {
@@ -19,7 +20,7 @@ impl Image {
 
 impl Display for Image {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.path)
+        write!(f, "{:?}", Path::new(&self.path).file_name())
     }
 }
 
