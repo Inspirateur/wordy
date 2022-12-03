@@ -112,7 +112,7 @@ impl HXBitmap {
         while let Some((vec_x, y)) = self.poses.next() {
             if y+other.height < self.height {
                 for (dx, other) in enumerate(&others) {
-                    if vec_x*usize::BITS as usize+dx >= self.width {
+                    if vec_x*usize::BITS as usize+dx+other.width >= self.width {
                         break;
                     }
                     if !self.overlaps(other, vec_x, y) {

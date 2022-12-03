@@ -1,25 +1,24 @@
-use fontdue::{Font, layout::{Layout, CoordinateSystem, TextStyle}};
-use image::RgbaImage;
+use fontdue::{Font, layout::{Layout, CoordinateSystem, TextStyle}, Metrics};
+use image::{RgbaImage, GenericImage, Rgba};
 use itertools::enumerate;
-use palette::rgb::Rgba;
-use super::{hxbitmap::{HXBitmap, CHARS}, rasterisable::Rasterisable, indexed_chars::IndexedChars};
+use super::{hxbitmap::{HXBitmap}, rasterisable::Rasterisable, indexed_chars::IndexedChars};
 use std::{iter::zip, fmt::Display};
 
 pub struct Text {
-    fonts: [Font; 1],
     text: String,
-    color: Rgba,
+    layout: Layout,
+    glyphs: Vec<(Metrics, Vec<u8>)>,
+    color: Rgba<u8>,
 }
 
 impl Text {
-    pub fn new(text: String, font: Font, color: Rgba) -> Self {
-        Self { fonts: [font], text, color }
-    }
-
-    fn layout(&self, size: f32) -> Layout {
+    pub fn new(text: String, font: Font, size: f32, color: Rgba<u8>) -> Self {
+        let fonts = [font];
         let mut layout = Layout::new(CoordinateSystem::PositiveYDown);
-        layout.append(&self.fonts, &TextStyle::new(self.text.as_str(), size, 0));
-        layout
+        layout.append(&fonts, &TextStyle::new(text.as_str(), size, 0));
+        let indexed = IndexedChars::new(&text);
+        let glyphs: Vec<_> = indexed.chars.iter().map(|c| fonts[0].rasterize(*c, size)).collect();
+        Self { text, layout, glyphs, color }
     }
 }
 
@@ -41,20 +40,27 @@ impl Display for Text {
 }
 
 impl Rasterisable for Text {
-    fn to_bitmap(&self, size: f32) -> HXBitmap {
-        let layout = self.layout(size);
-        let indexed = IndexedChars::new(&self.text);
-        let glyphs: Vec<_> = indexed.chars.iter().map(|c| self.fonts[0].rasterize(*c, size)).collect();
-        let dim = compute_dim(&layout);
+    fn to_bitmap(&self) -> HXBitmap {
+        let dim = compute_dim(&self.layout);
         let mut bitmap = HXBitmap::new(dim.0, dim.1);
-        for (pos, (metrics, char_bitmap)) in zip(layout.glyphs(), glyphs) {
-            bitmap.add_bitmap(metrics.width, &char_bitmap, pos.x as usize, pos.y as usize);
+        for (pos, (metrics, char_bitmap)) in zip(self.layout.glyphs(), &self.glyphs) {
+            bitmap.add_bitmap(metrics.width, char_bitmap, pos.x as usize, pos.y as usize);
         }
         bitmap
     }
 
-    fn draw(&self, image: &mut RgbaImage, pos: (usize, usize), size: f32) {
-        let layout = self.layout(size);
-        todo!()
+    fn draw(&self, image: &mut RgbaImage, pos: (usize, usize)) {
+        for (dpos, (metrics, char_bitmap)) in zip(self.layout.glyphs(), &self.glyphs) {
+            let x = pos.0 as u32 + dpos.x as u32;
+            let y = pos.1 as u32 + dpos.y as u32;
+            let mut subimg = image.sub_image(x, y, metrics.width as u32, metrics.height as u32);
+            for (i, value) in enumerate(char_bitmap) {
+                let dx = i % metrics.width;
+                let dy = i / metrics.width;
+                let mut color = self.color.clone();
+                color.0[3] = (color.0[3] as f32*(*value as f32)/255.) as u8;
+                subimg.put_pixel(dx as u32, dy as u32, color);
+            }
+        }
     }
 }
