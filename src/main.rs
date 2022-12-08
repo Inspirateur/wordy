@@ -1,25 +1,27 @@
-mod wordcloud;
-use serenity::utils::Color;
-use wordcloud::{wordcloud, Token};
-
-fn test_tokens() -> Vec<(Token, f32)> {
-    vec![
-        (Token::IMG("assets/images/kek.webp".to_string()), 0.01), 
-        (Token::IMG("assets/images/kingsip.webp".to_string()), 0.005), 
-        (Token::TEXT("KeK'".to_string()), 0.02), 
-        (Token::TEXT("Sauce".to_string()), 0.01), 
-        (Token::TEXT("Polisson".to_string()), 0.005),
-        (Token::TEXT("C'est".to_string()), 0.005),
-        (Token::TEXT("la".to_string()), 0.005),
-        (Token::TEXT("fête".to_string()), 0.005)
-    ]
-}
+mod idiom;
+use std::fs::File;
+use std::io::{prelude::*, BufReader};
+use idiom::Idioms;
+use itertools::Itertools;
+use wordcloud_rs::*;
 
 fn main() {
-    let font = include_bytes!("../assets/whitneymedium.otf") as &[u8];
-    // Parse it into the font type.
-    let font = fontdue::Font::from_bytes(font, fontdue::FontSettings::default()).unwrap();
-
-    let wc = wordcloud(font, (800, 400), test_tokens(), Some(Color::from_rgb(220, 240, 60)));
-    wc.save("test.png").unwrap();
+    let mut idioms = Idioms::new();
+    let file = File::open("assets/movie_lines.tsv").unwrap();
+    let reader = BufReader::new(file);
+    for line_res in reader.lines() {
+        if let Ok(line) = line_res {
+            let record = line.split("\t").collect_vec();
+            if record.len() == 3 {
+                idioms.update(
+                    String::new(), record[1].to_string(), record[2].to_string()
+                );
+            }
+        }
+    }
+    let person = "SPIDER-MAN".to_string();
+    let tokens = idioms.idiom(person).into_iter()
+    .map(|(token, v)| (Token::Text(token), v)).collect_vec();
+    let img = WordCloud::new().generate(tokens);
+    img.save("test.png").unwrap();
 }
