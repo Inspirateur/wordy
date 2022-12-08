@@ -20,7 +20,8 @@ fn main() {
         }
     }
     let person = "SPIDER-MAN".to_string();
-    let tokens = idioms.idiom(person).into_iter()
+    let idiom = idioms.idiom(person);
+    let tokens = idiom.into_iter()
     .map(|(token, v)| (Token::Text(token), v)).collect_vec();
     let img = WordCloud::new().generate(tokens);
     img.save("test.png").unwrap();

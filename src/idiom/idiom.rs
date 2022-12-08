@@ -6,7 +6,7 @@ use bimap::BiMap;
 use super::top_freqs::TopFreqs;
 const PLACE_VOC_LEN: usize = 200;
 const PERSON_VOC_LEN: usize = 100;
-const UNIQUENESS: f32 = 100.;
+const UNIQUENESS: f32 = PERSON_VOC_LEN as f32;
 // computed so that (INV-1.)*UNIQUENESS = 1.
 const INV: f32 = 1.+1./UNIQUENESS;
 
@@ -53,18 +53,23 @@ impl Idioms {
                 }
             };
             place_voc.add(idx, value);
-            user_voc.add(idx, (INV-place_voc.get(&idx))*UNIQUENESS);
+            let inctx_value = (INV-place_voc.get(&idx))*UNIQUENESS;
+            user_voc.add(idx, inctx_value);
         }
     }
 
     pub fn idiom(&self, person: String) -> Vec<(String, f32)> {
         let res = match self.people.get(&person) {
             Some(voc) => voc.data.clone().into_iter()
-                .filter(|(idx, _)| *idx == 0).collect_vec(),
+                .filter(|(idx, _)| *idx != 0).collect_vec(),
             None => Vec::new()
         };
         res.into_iter()
         .map(|(idx, v)| (self.tokens.get_by_right(&idx).unwrap().clone(), v))
         .collect_vec()
+    }
+
+    pub fn people(&self) -> Vec<&String> {
+        self.people.keys().collect_vec()
     }
 }
