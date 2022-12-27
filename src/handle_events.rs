@@ -4,12 +4,12 @@ use serenity::{
             Interaction,
         },
         gateway::Ready,
-        guild::Guild,
+        guild::Guild, prelude::Message,
     },
     async_trait,
     prelude::*
 };
-use log::info;
+use log::{info, trace};
 use crate::handler_util::{response, is_writable};
 use crate::handler::Handler;
 
@@ -45,5 +45,12 @@ impl EventHandler for Handler {
 
     async fn guild_create(&self, ctx: Context, guild: Guild, _is_new: bool) {
         self.register_guild(ctx.http, guild).await;
+    }
+
+    async fn message(&self, _ctx: Context, message: Message) {
+        if let Some(guild_id) = message.guild_id {
+            trace!(target: "Wordy", "Read a new message from {}", message.author.name);
+            self.message(guild_id, message.channel_id, message.author.id, message.content);
+        }
     }
 }

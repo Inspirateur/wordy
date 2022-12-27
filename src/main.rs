@@ -30,7 +30,7 @@ fn get_token(name: &str) -> Option<String> {
 
 #[tokio::main]
 async fn main() {
-    env_logger::builder().filter_module("Wordy", LevelFilter::Info).init();
+    env_logger::builder().filter_module("Wordy", LevelFilter::Trace).init();
     // Configure the client with your Discord bot token in the environment.
     let token = get_token("WORDY_TOKEN").unwrap();
     let http = Http::new(&token);

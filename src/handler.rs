@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log::{warn, info};
+use log::{warn, info, trace};
 use image::{write_buffer_with_format, ColorType, ImageOutputFormat};
 use std::{io::{Cursor, Seek, SeekFrom}, sync::Arc};
 use palette::rgb::Rgb;
@@ -17,6 +17,7 @@ use serenity::{
 };
 use wordcloud_rs::{Token, WordCloud, Colors};
 use crate::idiom::Idioms;
+const READ_PAST: u64 = 10000;
 
 fn convert_color(color: Color) -> Rgb {
     Rgb::new(
@@ -38,7 +39,7 @@ impl Handler {
     }
 
     pub fn message(&self, guild_id: GuildId, channel_id: ChannelId, member_id: UserId, message: String) {
-        self.idioms.get_mut(&guild_id).unwrap().update(channel_id, member_id, message)
+        self.idioms.get_mut(&guild_id).unwrap().update(channel_id, member_id, message);
     }
 
     fn to_wc_tokens(&self, tokens: Vec<(String, f32)>) -> Vec<(Token, f32)> {
@@ -52,6 +53,7 @@ impl Handler {
             if let Some(guild_id) = command.guild_id {
                 let member_id = member.user.id;
                 let tokens = self.idioms.get(&guild_id).unwrap().idiom(member_id);
+                trace!(target: "Wordy", "/cloud: retrieved {} tokens for {}", tokens.len(), member.user.name);
                 let wc_tokens = self.to_wc_tokens(tokens);
                 let image = WordCloud::new()
                 .colors(Colors::DoubleSplitCompl(convert_color(color))).generate(wc_tokens);
@@ -109,13 +111,14 @@ impl Handler {
                 tokio::spawn(async move {
                     for (channel_id, channel) in channels {
                         if let Ok(messages) = channel.messages(
-                            &http, |retriever| retriever.limit(1000)
+                            &http, |retriever| retriever.limit(READ_PAST)
                         ).await {
                             for message in messages {
                                 idioms.get_mut(&guild.id).unwrap().update(
-                                    channel_id, message.author.id, String::new()
+                                    channel_id, message.author.id, message.content
                                 );
                             }
+                            info!(target: "Wordy", "Read {} past messages in {}/{}", READ_PAST, guild.name, channel.name())
                         }
                     }
                 });    
