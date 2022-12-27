@@ -1,5 +1,5 @@
 use itertools::enumerate;
-const AGING: f32 = 0.9;
+const AGING: f32 = 0.99;
 
 pub struct TopFreqs<const S: usize, T: Eq + Default = usize> {
     pub data: [(T, f32); S],

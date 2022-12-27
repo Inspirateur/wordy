@@ -9,12 +9,18 @@ edition = "2021"
 fontdue = "*"
 image = "*"
 palette = "*"
-serenity = "*"
+serenity = {version = "*", default-features = false, features = [
+    "cache", "model", "builder", "client", "gateway", "http", 
+    "utils", "rustls_backend"
+]}
 anyhow = "*"
 itertools = "*"
 rand = "*"
 lazy_static = "*"
 log = "*"
+env_logger = "*"
 regex = "*"
 wordcloud-rs = "*"
 bimap = "*"
+tokio = { version = "*", features = ["macros", "rt-multi-thread"] }
+dashmap = "*"

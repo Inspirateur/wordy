@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -22,14 +23,14 @@ fn tokenize(text: String) -> Vec<(String, f32)> {
     counts.into_iter().map(|(k, v)| (k, v as f32)).collect()
 }
 
-pub struct Idioms {
-    places: HashMap<String, TopFreqs<PLACE_VOC_LEN>>,
-    people: HashMap<String, TopFreqs<PERSON_VOC_LEN>>,
+pub struct Idioms<P: Hash+Eq, U: Hash+Eq> {
+    places: HashMap<P, TopFreqs<PLACE_VOC_LEN>>,
+    people: HashMap<U, TopFreqs<PERSON_VOC_LEN>>,
     tokens: BiMap<String, usize>,
 }
 
 
-impl Idioms {
+impl<P: Hash+Eq, U: Hash+Eq> Idioms<P, U> {
     pub fn new() -> Self {
         let mut tokens = BiMap::new();
         // reserve slot 0 for empty string
@@ -39,7 +40,7 @@ impl Idioms {
         }
     }
 
-    pub fn update(&mut self, place: String, person: String, message: String) {
+    pub fn update(&mut self, place: P, person: U, message: String) {
         let place_voc = self.places.entry(place).or_insert(TopFreqs::new());
         let user_voc = self.people.entry(person).or_insert(TopFreqs::new());
         let tokens = tokenize(message);
@@ -58,7 +59,7 @@ impl Idioms {
         }
     }
 
-    pub fn idiom(&self, person: String) -> Vec<(String, f32)> {
+    pub fn idiom(&self, person: U) -> Vec<(String, f32)> {
         let res = match self.people.get(&person) {
             Some(voc) => voc.data.clone().into_iter()
                 .filter(|(idx, _)| *idx != 0).collect_vec(),
@@ -67,9 +68,5 @@ impl Idioms {
         res.into_iter()
         .map(|(idx, v)| (self.tokens.get_by_right(&idx).unwrap().clone(), v))
         .collect_vec()
-    }
-
-    pub fn people(&self) -> Vec<&String> {
-        self.people.keys().collect_vec()
     }
 }

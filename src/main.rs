@@ -1,28 +1,61 @@
 mod idiom;
-use std::fs::File;
-use std::io::{prelude::*, BufReader};
-use idiom::Idioms;
-use itertools::Itertools;
-use wordcloud_rs::*;
+mod handler;
+mod handler_util;
+mod handle_events;
+use handler::Handler;
+use env_logger;
+use std::fs::read_to_string;
+use log::{warn, error, LevelFilter};
+use serenity::{
+    http::Http,
+    model::gateway::GatewayIntents,
+    prelude::*,
+};
+use std::env;
 
-fn main() {
-    let mut idioms = Idioms::new();
-    let file = File::open("assets/movie_lines.tsv").unwrap();
-    let reader = BufReader::new(file);
-    for line_res in reader.lines() {
-        if let Ok(line) = line_res {
-            let record = line.split("\t").collect_vec();
-            if record.len() == 3 {
-                idioms.update(
-                    String::new(), record[1].to_string(), record[2].to_string()
-                );
-            }
+
+fn get_token(name: &str) -> Option<String> {
+    if let Ok(token) = env::var(name) {
+        Some(token)
+    } else {
+        warn!(target: "Wordy", "Couldn't find the 'WORDY_TOKEN' environment variable, using token.txt as fallback");
+        if let Ok(content) = read_to_string("token.txt") {
+            Some(content)
+        } else {
+            warn!(target: "Wordy", "Couldn't access token.txt");
+            None
         }
     }
-    let person = "SPIDER-MAN".to_string();
-    let idiom = idioms.idiom(person);
-    let tokens = idiom.into_iter()
-    .map(|(token, v)| (Token::Text(token), v)).collect_vec();
-    let img = WordCloud::new().generate(tokens);
-    img.save("test.png").unwrap();
+}
+
+#[tokio::main]
+async fn main() {
+    env_logger::builder().filter_module("Wordy", LevelFilter::Info).init();
+    // Configure the client with your Discord bot token in the environment.
+    let token = get_token("WORDY_TOKEN").unwrap();
+    let http = Http::new(&token);
+
+    // The Application Id is usually the Bot User Id.
+    let bot_id = match http.get_current_application_info().await {
+        Ok(info) => info.id,
+        Err(why) => panic!("Could not access application info: {:?}", why),
+    };
+    // Build our client.
+    let mut client = Client::builder(
+        token, GatewayIntents::non_privileged()
+        | GatewayIntents::GUILD_MEMBERS
+        | GatewayIntents::GUILD_PRESENCES
+    )
+        .event_handler(Handler::new())
+        .application_id(bot_id.into())
+        .await
+        .expect("Error creating client");
+
+    // Finally, start a single shard, and start listening to events.
+    //
+    // Shards will automatically attempt to reconnect, and will perform
+    // exponential backoff until it reconnects.
+    if let Err(why) = client.start().await {
+        error!(target: "Wordy", "Client error: {:?}", why);
+    }
 }
