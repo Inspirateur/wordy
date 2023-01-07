@@ -125,4 +125,31 @@ impl Handler {
             }
         }
     }
+
+    pub async fn register_commands(&self, http: Arc<Http>, guild_id: GuildId) {
+        println!("Registering slash commands for Guild {}", guild_id);
+        if let Err(why) =
+            GuildId::set_application_commands(&guild_id, http, |commands| {
+                commands
+                    .create_application_command(|command| {
+                        command.name("cloud").description(
+                            "Discover the word cloud that defines you !",
+                        )
+                    })
+                    .create_application_command(|command| {
+                        command
+                            .name("emojis")
+                            .description("Display the most and least used emojis for this server.")
+                    }).create_application_command(|command| {
+                        command
+                            .name("activity")
+                            .description("Display stats about the activity of text channels over time.")
+                    })
+            })
+            .await
+        {
+            println!("Couldn't register slash commmands: {}", why);
+        };
+
+    }
 }

@@ -44,6 +44,7 @@ impl EventHandler for Handler {
     }
 
     async fn guild_create(&self, ctx: Context, guild: Guild, _is_new: bool) {
+        self.register_commands(ctx.http.clone(), guild.id).await;
         self.register_guild(ctx.http, guild).await;
     }
 
