@@ -16,7 +16,7 @@ use serenity::{
     prelude::*, utils::Color
 };
 use wordcloud_rs::{Token, WordCloud, Colors};
-use crate::idiom::Idioms;
+use crate::idiom::{Idioms, tokenize};
 const READ_PAST: u64 = 10000;
 
 fn convert_color(color: Color) -> Rgb {
@@ -39,7 +39,7 @@ impl Handler {
     }
 
     pub fn message(&self, guild_id: GuildId, channel_id: ChannelId, member_id: UserId, message: String) {
-        self.idioms.get_mut(&guild_id).unwrap().update(channel_id, member_id, message);
+        self.idioms.get_mut(&guild_id).unwrap().update(channel_id, member_id, tokenize(message));
     }
 
     fn to_wc_tokens(&self, tokens: Vec<(String, f32)>) -> Vec<(Token, f32)> {
@@ -115,7 +115,7 @@ impl Handler {
                         ).await {
                             for message in messages {
                                 idioms.get_mut(&guild.id).unwrap().update(
-                                    channel_id, message.author.id, message.content
+                                    channel_id, message.author.id, tokenize(message.content)
                                 );
                             }
                             info!(target: "Wordy", "Read {} past messages in {}/{}", READ_PAST, guild.name, channel.name())
@@ -127,7 +127,7 @@ impl Handler {
     }
 
     pub async fn register_commands(&self, http: Arc<Http>, guild_id: GuildId) {
-        println!("Registering slash commands for Guild {}", guild_id);
+        trace!("Registering slash commands for Guild {}", guild_id);
         if let Err(why) =
             GuildId::set_application_commands(&guild_id, http, |commands| {
                 commands

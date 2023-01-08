@@ -15,9 +15,15 @@ lazy_static! {
     static ref RE_TOKEN: Regex = Regex::new(r"\w+").unwrap();
 }
 
-fn tokenize(text: String) -> Vec<(String, f32)> {
+pub fn tokenize(text: String) -> Vec<String> {
+    RE_TOKEN.find_iter(&text)
+        .map(|token| token.as_str().to_string())
+        .collect_vec()
+}
+
+fn counts(tokens: Vec<String>) -> Vec<(String, f32)> {
     let mut counts: HashMap<String, usize> = HashMap::new();
-    for token in RE_TOKEN.find_iter(&text) {
+    for token in tokens {
         *counts.entry(token.as_str().to_string()).or_default() += 1;
     }
     counts.into_iter().map(|(k, v)| (k, v as f32)).collect()
@@ -40,10 +46,10 @@ impl<P: Hash+Eq, U: Hash+Eq> Idioms<P, U> {
         }
     }
 
-    pub fn update(&mut self, place: P, person: U, message: String) {
+    pub fn update(&mut self, place: P, person: U, tokens: Vec<String>) {
         let place_voc = self.places.entry(place).or_insert(TopFreqs::new());
         let user_voc = self.people.entry(person).or_insert(TopFreqs::new());
-        let tokens = tokenize(message);
+        let tokens = counts(tokens);
         for (token, value) in tokens {
             let idx = match self.tokens.get_by_left(&token) {
                 Some(v) => *v,
