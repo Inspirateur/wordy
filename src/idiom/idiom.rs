@@ -1,33 +1,14 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 use itertools::Itertools;
-use lazy_static::lazy_static;
-use regex::Regex;
 use bimap::BiMap;
 use super::top_freqs::TopFreqs;
+use super::text_utils::counts;
 const PLACE_VOC_LEN: usize = 200;
 const PERSON_VOC_LEN: usize = 100;
 const UNIQUENESS: f32 = PERSON_VOC_LEN as f32;
 // computed so that (INV-1.)*UNIQUENESS = 1.
 const INV: f32 = 1.+1./UNIQUENESS;
-
-lazy_static! {
-    static ref RE_TOKEN: Regex = Regex::new(r"\w+").unwrap();
-}
-
-pub fn tokenize(text: String) -> Vec<String> {
-    RE_TOKEN.find_iter(&text)
-        .map(|token| token.as_str().to_string())
-        .collect_vec()
-}
-
-fn counts(tokens: Vec<String>) -> Vec<(String, f32)> {
-    let mut counts: HashMap<String, usize> = HashMap::new();
-    for token in tokens {
-        *counts.entry(token.as_str().to_string()).or_default() += 1;
-    }
-    counts.into_iter().map(|(k, v)| (k, v as f32)).collect()
-}
 
 pub struct Idioms<P: Hash+Eq, U: Hash+Eq> {
     places: HashMap<P, TopFreqs<PLACE_VOC_LEN>>,

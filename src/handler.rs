@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use log::{warn, info, trace};
 use image::{write_buffer_with_format, ColorType, ImageOutputFormat};
+use regex::Regex;
 use std::{io::{Cursor, Seek, SeekFrom}, sync::Arc};
 use palette::rgb::Rgb;
 use dashmap::DashMap;
@@ -15,9 +16,15 @@ use serenity::{
     },
     prelude::*, utils::Color
 };
+use futures::future::join_all;
+use lazy_static::lazy_static;
 use wordcloud_rs::{Token, WordCloud, Colors};
-use crate::idiom::{Idioms, tokenize};
+use crate::{idiom::{Idioms, tokenize}, discord_emojis::DiscordEmojis};
 const READ_PAST: u64 = 10000;
+
+lazy_static! {
+    static ref RE_EMO: Regex = Regex::new(r"<a?:(\w*):(\d*)>").unwrap();
+}
 
 fn convert_color(color: Color) -> Rgb {
     Rgb::new(
@@ -28,13 +35,15 @@ fn convert_color(color: Color) -> Rgb {
 }
 
 pub struct Handler {
-    idioms: Arc<DashMap<GuildId, Idioms<ChannelId, UserId>>>
+    idioms: Arc<DashMap<GuildId, Idioms<ChannelId, UserId>>>,
+    emojis: DiscordEmojis
 }
 
 impl Handler {
     pub fn new() -> Self {
         Self {
-            idioms: Arc::new(DashMap::new())
+            idioms: Arc::new(DashMap::new()),
+            emojis: DiscordEmojis::new(1000)
         }
     }
 
@@ -42,9 +51,20 @@ impl Handler {
         self.idioms.get_mut(&guild_id).unwrap().update(channel_id, member_id, tokenize(message));
     }
 
-    fn to_wc_tokens(&self, tokens: Vec<(String, f32)>) -> Vec<(Token, f32)> {
-        // TODO: also convert :emojis: to images 
-        tokens.into_iter().map(|(str, v)| (Token::Text(str), v)).collect_vec()
+    async fn to_wc_tokens(&self, tokens: Vec<(String, f32)>) -> Vec<(Token, f32)> {
+        join_all(tokens.into_iter().map(|(str, v)| async move {
+            if let Some(capts) = RE_EMO.captures(&str) {
+                let id = capts.get(2).unwrap().as_str();
+                if let Ok(img) = self.emojis.get(id).await {
+                    (Token::Img(img), v)
+                } else {
+                    let name = capts.get(1).unwrap().as_str();
+                    (Token::Text(name.to_string()), v)
+                }
+            } else {
+                (Token::Text(str), v)
+            }
+        }).collect_vec()).await
     }
 
     pub async fn cloud(&self, ctx: Context, command: ApplicationCommandInteraction) {
@@ -54,9 +74,9 @@ impl Handler {
                 let member_id = member.user.id;
                 let tokens = self.idioms.get(&guild_id).unwrap().idiom(member_id);
                 trace!(target: "Wordy", "/cloud: retrieved {} tokens for {}", tokens.len(), member.user.name);
-                let wc_tokens = self.to_wc_tokens(tokens);
+                let wc_tokens = self.to_wc_tokens(tokens).await;
                 let image = WordCloud::new()
-                .colors(Colors::DoubleSplitCompl(convert_color(color))).generate(wc_tokens);
+                    .colors(Colors::DoubleSplitCompl(convert_color(color))).generate(wc_tokens);
                 let mut img_file = Cursor::new(Vec::new());
                 write_buffer_with_format(
                     &mut img_file,
@@ -150,6 +170,5 @@ impl Handler {
         {
             println!("Couldn't register slash commmands: {}", why);
         };
-
     }
 }

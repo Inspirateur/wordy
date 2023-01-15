@@ -24,3 +24,6 @@ wordcloud-rs = "*"
 bimap = "*"
 tokio = { version = "*", features = ["macros", "rt-multi-thread"] }
 dashmap = "*"
+moka = "*"
+reqwest = "*"
+futures = "*"

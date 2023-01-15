@@ -1,4 +1,5 @@
 mod idiom;
+mod discord_emojis;
 mod handler;
 mod handler_util;
 mod handle_events;
