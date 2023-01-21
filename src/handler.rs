@@ -12,19 +12,22 @@ use serenity::{
             application_command::ApplicationCommandInteraction, 
             InteractionResponseType::ChannelMessageWithSource,
         },
-        id::GuildId, prelude::{UserId, ChannelId, Guild}, Timestamp
+        id::GuildId, prelude::{UserId, ChannelId, Guild, Channel}, Timestamp
     },
     prelude::*, utils::Color
 };
 use futures::future::join_all;
 use lazy_static::lazy_static;
 use wordcloud_rs::{Token, WordCloud, Colors};
-use crate::{idiom::{Idioms, tokenize, self}, discord_emojis::DiscordEmojis, handler_util::read_past};
+use crate::{idiom::{Idioms, tokenize}, discord_emojis::DiscordEmojis, handler_util::read_past};
 const READ_PAST: u64 = 1000;
 const DAYS: i64 = 100;
 
 lazy_static! {
     static ref RE_EMO: Regex = Regex::new(r"<a?:(\w*):(\d*)>").unwrap();
+    static ref RE_TAG: Regex = Regex::new(r"<@(\d*)>").unwrap();
+    static ref RE_CHAN: Regex = Regex::new(r"<#(\d*)>").unwrap();
+    static ref RE_ROLE: Regex = Regex::new(r"<@&(\d*)>").unwrap();
 }
 
 fn convert_color(color: Color) -> Rgb {
@@ -52,19 +55,35 @@ impl Handler {
         if let Some(mut idiom) = self.idioms.get_mut(&guild_id) {
             idiom.update(channel_id, member_id, tokenize(message));
         } else {
-            warn!(target: "Wordy", "Guild {} isn't registered yet.", guild_id);
+            warn!(target: "wordy", "Guild {} isn't registered yet.", guild_id);
         }
     }
 
-    async fn to_wc_tokens(&self, tokens: Vec<(String, f32)>) -> Vec<(Token, f32)> {
+    async fn to_wc_tokens(
+        &self, tokens: Vec<(String, f32)>, http: &Arc<Http>
+    ) -> Vec<(Token, f32)> {
         join_all(tokens.into_iter().map(|(str, v)| async move {
             if let Some(capts) = RE_EMO.captures(&str) {
-                let id = capts.get(2).unwrap().as_str();
-                if let Ok(img) = self.emojis.get(id).await {
+                let emo_id = capts.get(2).unwrap().as_str();
+                if let Ok(img) = self.emojis.get(emo_id).await {
                     (Token::Img(img), v)
                 } else {
                     let name = capts.get(1).unwrap().as_str();
                     (Token::Text(name.to_string()), v)
+                }
+            } else if let Some(capts) = RE_TAG.captures(&str) {
+                let user_id = capts.get(1).unwrap().as_str().parse().unwrap();
+                if let Ok(member) = http.get_user(user_id).await {
+                    (Token::Text(format!("@{}", member.name)), v)
+                } else {
+                    (Token::Text("@deleted_user".to_string()), v)
+                }
+            } else if let Some(capts) = RE_CHAN.captures(&str) {
+                let chan_id = capts.get(1).unwrap().as_str().parse().unwrap();
+                match http.get_channel(chan_id).await {
+                    Ok(Channel::Guild(channel)) => (Token::Text(format!("#{}", channel.name)), v),
+                    Ok(Channel::Category(channel)) => (Token::Text(format!("#{}", channel.name)), v),
+                    _ => (Token::Text("#deleted_channel".to_string()), v)
                 }
             } else {
                 (Token::Text(str), v)
@@ -78,8 +97,8 @@ impl Handler {
             if let Some(guild_id) = command.guild_id {
                 let member_id = member.user.id;
                 let tokens = self.idioms.get(&guild_id).unwrap().idiom(member_id);
-                trace!(target: "Wordy", "/cloud: retrieved {} tokens for {}", tokens.len(), member.user.name);
-                let wc_tokens = self.to_wc_tokens(tokens).await;
+                trace!(target: "wordy", "/cloud: retrieved {} tokens for {}", tokens.len(), member.user.name);
+                let wc_tokens = self.to_wc_tokens(tokens, &ctx.http).await;
                 let image = WordCloud::new()
                     .colors(Colors::DoubleSplitCompl(convert_color(color))).generate(wc_tokens);
                 let mut img_file = Cursor::new(Vec::new());
@@ -108,13 +127,13 @@ impl Handler {
                     })
                     .await
                 {
-                    warn!(target: "Wordy", "/cloud: Response failed with `{}`", why);
+                    warn!(target: "wordy", "/cloud: Response failed with `{}`", why);
                 };
             } else {
-                warn!(target: "Wordy", "/cloud: Couldn't get guild");
+                warn!(target: "wordy", "/cloud: Couldn't get guild");
             }
         } else {
-            warn!(target: "Wordy", "/cloud: Couldn't get member");
+            warn!(target: "wordy", "/cloud: Couldn't get member");
         }
     }
 
@@ -129,7 +148,7 @@ impl Handler {
         ).unwrap();
         if let Ok(channels) = guild.channels(&http).await {
             if !self.idioms.contains_key(&guild.id) {
-                info!(target: "Wordy", "Registering {} (id {})", guild.name, guild.id);
+                info!(target: "wordy", "Registering {} (id {})", guild.name, guild.id);
                 self.idioms.insert(guild.id, Idioms::new());
                 let http = Arc::clone(&http);
                 let idioms = Arc::clone(&self.idioms);
@@ -143,7 +162,7 @@ impl Handler {
                             );
                         }
                         if len > 0 {
-                            info!(target: "Wordy", "Read {} past messages in {}/{}", len, guild.name, channel.name())
+                            info!(target: "wordy", "Read {} past messages in {}/{}", len, guild.name, channel.name())
                         }
                     }
                 });

@@ -19,11 +19,11 @@ fn get_token(name: &str) -> Option<String> {
     if let Ok(token) = env::var(name) {
         Some(token)
     } else {
-        warn!(target: "Wordy", "Couldn't find the 'WORDY_TOKEN' environment variable, using token.txt as fallback");
+        warn!(target: "wordy", "Couldn't find the 'WORDY_TOKEN' environment variable, using token.txt as fallback");
         if let Ok(content) = read_to_string("token.txt") {
             Some(content)
         } else {
-            warn!(target: "Wordy", "Couldn't access token.txt");
+            warn!(target: "wordy", "Couldn't access token.txt");
             None
         }
     }
@@ -31,7 +31,10 @@ fn get_token(name: &str) -> Option<String> {
 
 #[tokio::main]
 async fn main() {
-    env_logger::builder().filter_module("Wordy", LevelFilter::Trace).init();
+    env_logger::builder()
+        .filter_module("wordy", LevelFilter::Trace)
+        .filter_module("wordcloud", LevelFilter::Warn)
+        .init();
     // Configure the client with your Discord bot token in the environment.
     let token = get_token("WORDY_TOKEN").unwrap();
     let http = Http::new(&token);
@@ -57,6 +60,6 @@ async fn main() {
     // Shards will automatically attempt to reconnect, and will perform
     // exponential backoff until it reconnects.
     if let Err(why) = client.start().await {
-        error!(target: "Wordy", "Client error: {:?}", why);
+        error!(target: "wordy", "Client error: {:?}", why);
     }
 }

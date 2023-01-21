@@ -39,7 +39,7 @@ impl EventHandler for Handler {
     }
 
     async fn ready(&self, _ctx: Context, ready: Ready) {
-        info!(target: "Wordy", "{} is connected!", ready.user.name);
+        info!(target: "wordy", "{} is connected!", ready.user.name);
     }
 
     async fn guild_create(&self, ctx: Context, guild: Guild, _is_new: bool) {
@@ -49,6 +49,7 @@ impl EventHandler for Handler {
 
     async fn message(&self, _ctx: Context, message: Message) {
         if let Some(guild_id) = message.guild_id {
+            trace!(target: "wordy", "Read a new message from {}", message.author.name);
             self.message(guild_id, message.channel_id, message.author.id, message.content);
         }
     }
