@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -30,12 +29,4 @@ pub fn tokenize(text: String) -> Vec<String> {
     RE_TOKEN.find_iter(&text)
         .map(|token| smart_lower(trim(token.as_str())))
         .collect_vec()
-}
-
-pub(crate) fn counts(tokens: Vec<String>) -> Vec<(String, f32)> {
-    let mut counts: HashMap<String, usize> = HashMap::new();
-    for token in tokens {
-        *counts.entry(token.as_str().to_string()).or_default() += 1;
-    }
-    counts.into_iter().map(|(k, v)| (k, v as f32)).collect()
 }

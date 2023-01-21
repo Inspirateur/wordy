@@ -3,7 +3,6 @@ use std::hash::Hash;
 use itertools::Itertools;
 use bimap::BiMap;
 use super::top_freqs::TopFreqs;
-use super::text_utils::counts;
 const PLACE_VOC_LEN: usize = 500;
 const PERSON_VOC_LEN: usize = 200;
 
@@ -27,8 +26,7 @@ impl<P: Hash+Eq, U: Hash+Eq> Idioms<P, U> {
     pub fn update(&mut self, place: P, person: U, tokens: Vec<String>) {
         let place_voc = self.places.entry(place).or_insert(TopFreqs::new());
         let user_voc = self.people.entry(person).or_insert(TopFreqs::new());
-        let tokens = counts(tokens);
-        for (token, value) in tokens {
+        for token in tokens {
             let idx = match self.tokens.get_by_left(&token) {
                 Some(v) => *v,
                 None => {
@@ -37,8 +35,8 @@ impl<P: Hash+Eq, U: Hash+Eq> Idioms<P, U> {
                     v
                 }
             };
-            place_voc.add(idx, value);
-            let inctx_value = (-place_voc.get(&idx)).exp()*50.;
+            place_voc.add(idx, 1.);
+            let inctx_value = (-place_voc.get(&idx)).exp()*20.;
             user_voc.add(idx, inctx_value);
         }
     }

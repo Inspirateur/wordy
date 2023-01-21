@@ -2342,9 +2342,9 @@ dependencies = [
 
 [[package]]
 name = "wordcloud-rs"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6376e4377c9727d07621710f07db78b8dd629ef37c74f700bd9898609e99a47"
+checksum = "147dd54380da9cd7704068c95b24c065415cfc765193556c1604c55d97aef7e6"
 dependencies = [
  "anyhow",
  "fontdue",
