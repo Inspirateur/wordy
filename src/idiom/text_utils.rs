@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
-const OPENING_PUNCT: &[char] = &['(', '[', '{', '\'', '"'];
-const CLOSING_PUNCT: &[char] = &[':', '.', '?', '!', '`', ';', ',', ')', ']', '}', '\'', '"'];
+const OPENING_PUNCT: &[char] = &['(', '[', '{', '\'', '"', '*', '`'];
+const CLOSING_PUNCT: &[char] = &[':', '.', '?', '!', '`', ';', ',', ')', ']', '}', '\'', '"', '*', '`'];
 
 lazy_static! {
     static ref RE_TOKEN: Regex = Regex::new(r"\S+").unwrap();

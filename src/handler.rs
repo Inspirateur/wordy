@@ -12,15 +12,16 @@ use serenity::{
             application_command::ApplicationCommandInteraction, 
             InteractionResponseType::ChannelMessageWithSource,
         },
-        id::GuildId, prelude::{UserId, ChannelId, Guild}
+        id::GuildId, prelude::{UserId, ChannelId, Guild}, Timestamp
     },
     prelude::*, utils::Color
 };
 use futures::future::join_all;
 use lazy_static::lazy_static;
 use wordcloud_rs::{Token, WordCloud, Colors};
-use crate::{idiom::{Idioms, tokenize}, discord_emojis::DiscordEmojis};
-const READ_PAST: u64 = 10000;
+use crate::{idiom::{Idioms, tokenize}, discord_emojis::DiscordEmojis, handler_util::read_past};
+const READ_PAST: u64 = 1000;
+const DAYS: i64 = 100;
 
 lazy_static! {
     static ref RE_EMO: Regex = Regex::new(r"<a?:(\w*):(\d*)>").unwrap();
@@ -103,7 +104,7 @@ impl Handler {
                     })
                     .await
                 {
-                    println!("{}", why);
+                    warn!(target: "Wordy", "/cloud: Response failed with `{}`", why);
                 };
             } else {
                 warn!(target: "Wordy", "/cloud: Couldn't get guild");
@@ -113,15 +114,15 @@ impl Handler {
         }
     }
 
-    pub async fn emojis(&self, ctx: Context, command: ApplicationCommandInteraction) {
-        todo!()
-    }
-
-    pub async fn activity(&self, ctx: Context, command: ApplicationCommandInteraction) {
+    pub async fn info(&self, ctx: Context, command: ApplicationCommandInteraction) {
         todo!()
     }
 
     pub async fn register_guild(&self, http: Arc<Http>, guild: Guild) {
+        // only read messages that are less than 100 days old
+        let cutoff_date = Timestamp::from_unix_timestamp(
+            Timestamp::now().unix_timestamp() - 3600*24*DAYS
+        ).unwrap();
         if let Ok(channels) = guild.channels(&http).await {
             if !self.idioms.contains_key(&guild.id) {
                 info!(target: "Wordy", "Registering {} (id {})", guild.name, guild.id);
@@ -130,18 +131,18 @@ impl Handler {
                 let idioms = Arc::clone(&self.idioms);
                 tokio::spawn(async move {
                     for (channel_id, channel) in channels {
-                        if let Ok(messages) = channel.messages(
-                            &http, |retriever| retriever.limit(READ_PAST)
-                        ).await {
-                            for message in messages {
-                                idioms.get_mut(&guild.id).unwrap().update(
-                                    channel_id, message.author.id, tokenize(message.content)
-                                );
-                            }
-                            info!(target: "Wordy", "Read {} past messages in {}/{}", READ_PAST, guild.name, channel.name())
+                        let messages = read_past(&http, &channel, READ_PAST, cutoff_date).await;
+                        let len = messages.len();
+                        for message in messages {
+                            idioms.get_mut(&guild.id).unwrap().update(
+                                channel_id, message.author.id, tokenize(message.content)
+                            );
+                        }
+                        if len > 0 {
+                            info!(target: "Wordy", "Read {} past messages in {}/{}", len, guild.name, channel.name())
                         }
                     }
-                });    
+                });
             }
         }
     }
@@ -158,16 +159,10 @@ impl Handler {
                     })
                     .create_application_command(|command| {
                         command
-                            .name("emojis")
-                            .description("Display the most and least used emojis for this server.")
-                    }).create_application_command(|command| {
-                        command
-                            .name("activity")
-                            .description("Display stats about the activity of text channels over time.")
+                            .name("info")
+                            .description("Information about this bot.")
                     })
-            })
-            .await
-        {
+            }).await {
             println!("Couldn't register slash commmands: {}", why);
         };
     }

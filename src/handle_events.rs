@@ -23,8 +23,7 @@ impl EventHandler for Handler {
                 if is_writable(&ctx, command.channel_id).await {
                     match command.data.name.as_str() {
                         "cloud" => self.cloud(ctx, command).await,
-                        "emojis" => self.emojis(ctx, command).await,
-                        "activity" => self.activity(ctx, command).await,
+                        "info" => self.info(ctx, command).await,
                         _ => {}
                     };
                 } else {

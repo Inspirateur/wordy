@@ -4,8 +4,8 @@ use itertools::Itertools;
 use bimap::BiMap;
 use super::top_freqs::TopFreqs;
 use super::text_utils::counts;
-const PLACE_VOC_LEN: usize = 200;
-const PERSON_VOC_LEN: usize = 100;
+const PLACE_VOC_LEN: usize = 500;
+const PERSON_VOC_LEN: usize = 200;
 const UNIQUENESS: f32 = PERSON_VOC_LEN as f32;
 // computed so that (INV-1.)*UNIQUENESS = 1.
 const INV: f32 = 1.+1./UNIQUENESS;
