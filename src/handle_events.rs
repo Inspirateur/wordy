@@ -49,7 +49,6 @@ impl EventHandler for Handler {
 
     async fn message(&self, _ctx: Context, message: Message) {
         if let Some(guild_id) = message.guild_id {
-            trace!(target: "Wordy", "Read a new message from {}", message.author.name);
             self.message(guild_id, message.channel_id, message.author.id, message.content);
         }
     }

@@ -19,7 +19,7 @@ use serenity::{
 use futures::future::join_all;
 use lazy_static::lazy_static;
 use wordcloud_rs::{Token, WordCloud, Colors};
-use crate::{idiom::{Idioms, tokenize}, discord_emojis::DiscordEmojis, handler_util::read_past};
+use crate::{idiom::{Idioms, tokenize, self}, discord_emojis::DiscordEmojis, handler_util::read_past};
 const READ_PAST: u64 = 1000;
 const DAYS: i64 = 100;
 
@@ -49,7 +49,11 @@ impl Handler {
     }
 
     pub fn message(&self, guild_id: GuildId, channel_id: ChannelId, member_id: UserId, message: String) {
-        self.idioms.get_mut(&guild_id).unwrap().update(channel_id, member_id, tokenize(message));
+        if let Some(mut idiom) = self.idioms.get_mut(&guild_id) {
+            idiom.update(channel_id, member_id, tokenize(message));
+        } else {
+            warn!(target: "Wordy", "Guild {} isn't registered yet.", guild_id);
+        }
     }
 
     async fn to_wc_tokens(&self, tokens: Vec<(String, f32)>) -> Vec<(Token, f32)> {

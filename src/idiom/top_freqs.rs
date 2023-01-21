@@ -3,7 +3,7 @@ const AGING: f32 = 0.999;
 
 pub struct TopFreqs<const S: usize, T: Eq + Default = usize> {
     pub data: [(T, f32); S],
-    max: f32,
+    pub max: f32,
 }
 
 impl<const S: usize, T: Eq + Default> TopFreqs<S, T> {
@@ -14,11 +14,8 @@ impl<const S: usize, T: Eq + Default> TopFreqs<S, T> {
     }
 
     pub fn get(&self, entry: &T) -> f32 {
-        if self.max == 0. {
-            return 0.;
-        }
         if let Some((_, v)) = self.data.iter().find(|(key, _)| key == entry) {
-            *v/self.max
+            *v
         } else {
             0.
         }
