@@ -36,7 +36,7 @@ impl<P: Hash+Eq, U: Hash+Eq> Idioms<P, U> {
                 }
             };
             place_voc.add(idx, 1.);
-            let inctx_value = (-place_voc.get(&idx)).exp()*20.;
+            let inctx_value = (-place_voc.get(&idx)).exp()*10.;
             user_voc.add(idx, inctx_value);
         }
     }

@@ -100,7 +100,10 @@ impl Handler {
                 trace!(target: "wordy", "/cloud: retrieved {} tokens for {}", tokens.len(), member.user.name);
                 let wc_tokens = self.to_wc_tokens(tokens, &ctx.http).await;
                 let image = WordCloud::new()
-                    .colors(Colors::DoubleSplitCompl(convert_color(color))).generate(wc_tokens);
+                    .colors(Colors::BiaisedRainbow { 
+                        anchor: convert_color(color),
+                        variance: 50. 
+                    }).generate(wc_tokens);
                 let mut img_file = Cursor::new(Vec::new());
                 write_buffer_with_format(
                     &mut img_file,
@@ -138,7 +141,19 @@ impl Handler {
     }
 
     pub async fn info(&self, ctx: Context, command: ApplicationCommandInteraction) {
-        todo!()
+        if let Err(why) = command
+        .create_interaction_response(&ctx.http, |response| {
+            response
+                .kind(ChannelMessageWithSource)
+                .interaction_response_data(
+                    |message| message.content(
+                        "Made with ❤️ by Inspi#8989\n
+                        Repository: <https://github.com/Inspirateur/wordy>"
+                    )
+                )
+        }).await {
+            warn!(target: "wordy", "/info: Response failed with `{}`", why);
+        };
     }
 
     pub async fn register_guild(&self, http: Arc<Http>, guild: Guild) {
