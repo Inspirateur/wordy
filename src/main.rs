@@ -1,9 +1,11 @@
 mod idiom;
 mod discord_emojis;
-mod handler;
-mod handler_util;
-mod handle_events;
-use handler::Handler;
+mod discord_util;
+mod wordy;
+mod wordy_events;
+mod wordy_commands;
+mod fixed_deque;
+use wordy::Wordy;
 use env_logger;
 use std::fs::read_to_string;
 use log::{warn, error, LevelFilter};
@@ -50,7 +52,7 @@ async fn main() {
         | GatewayIntents::GUILD_MEMBERS
         | GatewayIntents::GUILD_PRESENCES
     )
-        .event_handler(Handler::new())
+        .event_handler(Wordy::new())
         .application_id(bot_id.into())
         .await
         .expect("Error creating client");
