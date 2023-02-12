@@ -26,8 +26,13 @@ lazy_static! {
 }
 
 pub struct EmojiRankings {
-    pub png_ranking: Vec<(EmojiId, usize)>,
-    pub gif_ranking: Vec<(EmojiId, usize)>
+    pub png: Vec<(Emoji, f64)>,
+    pub gif: Vec<(Emoji, f64)>
+}
+
+fn norm_emo_ranking(emo_ranking: Vec<(Emoji, usize)>) -> Vec<(Emoji, f64)> {
+    let sum = emo_ranking.iter().fold(0., |acc, (_, count)| *count as f64 + acc);
+    emo_ranking.into_iter().map(|(emoji_id, count)| (emoji_id, count as f64/sum)).collect()
 }
 
 fn convert_color(color: Color) -> Rgb {
@@ -178,14 +183,19 @@ impl Wordy {
             let mut gif_ranking = Vec::new();
             for (emoji_id, emoji) in server_emos.iter() {
                 if emoji.animated {
-                    gif_ranking.push((*emoji_id, *(counts.get(emoji_id).unwrap_or(&0))));
+                    gif_ranking.push((emoji.clone(), *counts.get(emoji_id).unwrap_or(&0)));
                 } else {
-                    png_ranking.push((*emoji_id, *(counts.get(emoji_id).unwrap_or(&0))));
+                    png_ranking.push((emoji.clone(), *counts.get(emoji_id).unwrap_or(&0)));
                 }
             }
             png_ranking.sort_by_key(|(_, count)| *count);
+            png_ranking.reverse();
             gif_ranking.sort_by_key(|(_, count)| *count);
-            Ok(EmojiRankings { png_ranking, gif_ranking})
+            gif_ranking.reverse();
+            Ok(EmojiRankings { 
+                png: norm_emo_ranking(png_ranking), 
+                gif: norm_emo_ranking(gif_ranking)
+            })
         } else {
             bail!("Guild is not yet registered")
         }

@@ -12,7 +12,7 @@ use serenity::{
     prelude::*
 };
 use log::{info, trace, warn};
-use crate::discord_util::{response, is_writable};
+use crate::discord_util::{is_writable, Bot};
 use crate::wordy::Wordy;
 
 
@@ -21,23 +21,25 @@ impl EventHandler for Wordy {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
             Interaction::ApplicationCommand(command) => {
+                let command_name = command.data.name.to_string();
                 // only answer if the bot has access to the channel
                 if is_writable(&ctx, command.channel_id).await {
-                    let command_name = command.data.name.to_string();
                     if let Err(why) = match command_name.as_str() {
                         "cloud" => self.cloud_command(ctx, command).await,
                         "emojis" => self.emojis_command(ctx, command).await,
                         "info" => self.info_command(ctx, command).await,
                         _ => Err(anyhow!("Unknown command"))
                     } {
-                        warn!(target: "wordy", "\\{}: {}", command_name, why);
+                        warn!(target: "wordy", "\\{}: {:?}", command_name, why);
                     }
                 } else {
-                    response(
-                        &ctx.http,
-                        &command,
-                        "Sorry, I only answer to commands in the channels that I can write to.",
-                    ).await;
+                    if let Err(why) = ctx.http.answer(
+                        &command, 
+                        "Sorry, I only answer to commands in the channels that I can write to.", 
+                        vec![]
+                    ).await {
+                        warn!(target: "wordy", "\\{} in non writable channel: {:?}", command_name, why);
+                    }
                 }
             },
             _ => {}

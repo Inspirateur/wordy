@@ -8,8 +8,55 @@ use serenity::{
         },
         prelude::{ChannelId, Channel, GuildChannel, Message}, Timestamp,
     },
-    prelude::*
+    prelude::*, async_trait
 };
+use anyhow::{Result, Context as ContextErr};
+
+type Command = ApplicationCommandInteraction;
+pub struct Attachment { pub file: Vec<u8>, pub filename: String }
+
+
+#[async_trait]
+pub trait Bot {
+    async fn answer(&self, command: &Command, content: &str, files: Vec<Attachment>) -> Result<()>;
+
+    async fn followup(&self, command: &Command, content: &str, files: Vec<Attachment>) -> Result<()>;
+}
+
+#[async_trait]
+impl Bot for Http {
+    async fn answer(&self, command: &Command, content: &str, files: Vec<Attachment>) -> Result<()> {
+        (
+            command
+            .create_interaction_response(self, |response| {
+                response
+                .kind(ChannelMessageWithSource)
+                .interaction_response_data(|answer| {
+                    answer.content(content);
+                    files.iter().for_each(|Attachment {file, filename}| {
+                        answer.add_file((file.as_slice(), filename.as_str())); 
+                    });
+                    answer
+                })
+            }).await
+        ).context("Command create response failed")
+    }
+
+    async fn followup(&self, command: &Command, content: &str, files: Vec<Attachment>) -> Result<()> {
+        (
+            command
+            .create_followup_message(self, |answer| {
+                answer.content(content);
+                files.iter().for_each(|Attachment {file, filename}| {
+                    answer.add_file((file.as_slice(), filename.as_str())); 
+                });
+                answer
+
+            }).await
+        ).context("Command create followup failed")?;
+        Ok(())
+    }
+}
 
 pub async fn is_writable(ctx: &Context, channel_id: ChannelId) -> bool {
     if let Ok(Channel::Guild(channel)) = channel_id.to_channel(&ctx.http).await {
@@ -22,22 +69,6 @@ pub async fn is_writable(ctx: &Context, channel_id: ChannelId) -> bool {
     false
 }
 
-
-pub async fn response<D>(http: &Http, command: &ApplicationCommandInteraction, msg: D)
-where
-    D: ToString,
-{
-    if let Err(why) = command
-        .create_interaction_response(http, |response| {
-            response
-                .kind(ChannelMessageWithSource)
-                .interaction_response_data(|message| message.content(msg))
-        })
-        .await
-    {
-        println!("{}", why);
-    };
-}
 
 pub async fn read_past(http: &Arc<Http>, channel: &GuildChannel, limit: u64, cutoff_date: Timestamp) -> Vec<Message> {
     // Discord's API has a limit of 100 for retrieving past messages, 
