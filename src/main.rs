@@ -1,4 +1,5 @@
 mod idiom;
+mod emoji_usage;
 mod discord_emojis;
 mod discord_util;
 mod wordy;

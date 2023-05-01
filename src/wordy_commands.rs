@@ -1,45 +1,15 @@
 use std::{io::{Cursor, Seek, SeekFrom}, sync::Arc};
-use itertools::Itertools;
 use log::{trace, info};
 use image::{write_buffer_with_format, ColorType, ImageOutputFormat};
 use anyhow::{Result, bail, anyhow};
 use serenity::{http::Http, model::{
-    prelude::{GuildId, Guild, Emoji}, 
+    prelude::{GuildId, Guild}, 
     application::interaction::application_command::ApplicationCommandInteraction, 
     Timestamp
 }, prelude::Context};
-use crate::{wordy::{Wordy, register_guild, read_message}, discord_util::{read_past, Bot, Attachment}};
+use crate::{wordy::{Wordy, register_guild, read_message}, discord_util::{read_past, Bot, Attachment}, emoji_usage::emo_ranking_msg};
 const READ_PAST: u64 = 1000;
 const DAYS: i64 = 100;
-const TOP_EMO: usize = 5;
-const BOTTOM_EMO: usize = 15;
-fn emo_entry_mst(rank: usize, freq: f64, emos: Vec<Emoji>) -> String {
-    // limit to 20 emojis because the message gets too long otherwise
-    let ellipsis = if emos.len() > BOTTOM_EMO { "… " } else { "" };
-    let emo_str = emos.into_iter().take(BOTTOM_EMO).join("");
-    format!("{}. {}{}: {:.0}%", rank, emo_str, ellipsis, freq*100.0)
-}
-
-fn emo_ranking_msg(emo_ranking: Vec<(Emoji, f64)>) -> String {
-    if emo_ranking.len() == 0 {
-        return "No entries :(".to_string();
-    }
-    let mut grouped_ranking = Vec::new();
-    for (freq, emos) in &emo_ranking.into_iter().group_by(|(_, freq)| (freq*100.0).round()/100.) {
-        grouped_ranking.push((freq, emos.map(|(emoji_id, _)| emoji_id).collect_vec()));
-    }
-    let toplen = if grouped_ranking.len() <= TOP_EMO+1 { TOP_EMO+1 } else { TOP_EMO };
-    let top = grouped_ranking.iter().cloned().enumerate().take(toplen)
-    .map(|(i, (freq, emos))| emo_entry_mst(i+1, freq, emos))
-    .join("\n");
-    if toplen == TOP_EMO+1 {
-        top
-    } else {
-        let (freq, emos) = grouped_ranking.pop().unwrap();
-        let bottom = emo_entry_mst(grouped_ranking.len(), freq, emos);
-        format!("{}\n...\n{}", top, bottom)    
-    }
-}
 
 impl Wordy {
     pub async fn cloud_command(&self, ctx: Context, command: ApplicationCommandInteraction) -> Result<()> {

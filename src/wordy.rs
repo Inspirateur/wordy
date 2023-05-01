@@ -16,23 +16,27 @@ use serenity::{
 use futures::future::join_all;
 use lazy_static::lazy_static;
 use wordcloud_rs::{Token, WordCloud, Colors};
-use crate::{idiom::{Idioms, tokenize}, discord_emojis::DiscordEmojis, fixed_deque::FixedDeque};
+use crate::{idiom::{Idioms, tokenize}, discord_emojis::DiscordEmojis, fixed_deque::FixedDeque, emoji_usage::EmojiUsage};
 
 lazy_static! {
-    static ref RE_EMO: Regex = Regex::new(r"^<a?:(\w*):(\d*)>$").unwrap();
-    static ref RE_TAG: Regex = Regex::new(r"^<@(\d*)>$").unwrap();
-    static ref RE_CHAN: Regex = Regex::new(r"^<#(\d*)>$").unwrap();
-    static ref RE_ROLE: Regex = Regex::new(r"^<@&(\d*)>$").unwrap();
+    static ref RE_EMO: Regex = Regex::new(r"^<a?:(\w+):(\d+)>$").unwrap();
+    static ref RE_TAG: Regex = Regex::new(r"^<@(\d+)>$").unwrap();
+    static ref RE_CHAN: Regex = Regex::new(r"^<#(\d+)>$").unwrap();
+    static ref RE_ROLE: Regex = Regex::new(r"^<@&(\d+)>$").unwrap();
 }
 
 pub struct EmojiRankings {
-    pub png: Vec<(Emoji, f64)>,
-    pub gif: Vec<(Emoji, f64)>
+    pub png: Vec<EmojiUsage>,
+    pub gif: Vec<EmojiUsage>
 }
 
-fn norm_emo_ranking(emo_ranking: Vec<(Emoji, usize)>) -> Vec<(Emoji, f64)> {
-    let sum = emo_ranking.iter().fold(0., |acc, (_, count)| *count as f64 + acc);
-    emo_ranking.into_iter().map(|(emoji_id, count)| (emoji_id, count as f64/sum)).collect()
+fn norm_emo_ranking(emo_ranking: Vec<(Emoji, usize)>) -> Vec<EmojiUsage> {
+    let sum = emo_ranking.iter().fold(
+        0., |acc, (_, count)| *count as f64 + acc
+    );
+    emo_ranking.into_iter().map(
+        |(emoji_id, count)| EmojiUsage(emoji_id, count as f64/sum)
+    ).collect()
 }
 
 fn convert_color(color: Color) -> Rgb {
