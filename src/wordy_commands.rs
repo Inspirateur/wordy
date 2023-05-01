@@ -1,5 +1,5 @@
 use std::{io::{Cursor, Seek, SeekFrom}, sync::Arc};
-use log::{trace, info};
+use log::{trace, info, warn};
 use image::{write_buffer_with_format, ColorType, ImageOutputFormat};
 use anyhow::{Result, bail, anyhow};
 use serenity::{http::Http, model::{

@@ -8,7 +8,7 @@ pub struct EmojiUsage(pub Emoji, pub f64);
 
 impl PartialEq for EmojiUsage {
     fn eq(&self, other: &Self) -> bool {
-        self.1 == other.1
+        (self.1*100.).round() == (other.1*100.).round()
     }
 
     fn ne(&self, other: &Self) -> bool {
