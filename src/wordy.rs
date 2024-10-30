@@ -7,11 +7,9 @@ use anyhow::{Result, bail};
 use palette::rgb::Rgb;
 use dashmap::DashMap;
 use serenity::{
-    http::Http, 
-    model:: {
-        id::GuildId, prelude::{UserId, ChannelId, Guild, Channel, Message, EmojiId, Emoji, Member}
-    },
-    prelude::*, utils::Color
+    all::Color, http::Http, model:: {
+        id::GuildId, prelude::{Channel, ChannelId, Emoji, EmojiId, Guild, Member, Message, UserId}
+    }, prelude::*
 };
 use futures::future::join_all;
 use lazy_static::lazy_static;
@@ -86,7 +84,7 @@ pub fn read_message(
         .iter()
         .filter_map(|token| {
             if let Some(caps) = RE_EMO.captures(token) {
-                let emoji_id = EmojiId(
+                let emoji_id = EmojiId::new(
                     caps.get(2).unwrap().as_str().parse::<u64>().unwrap()
                 );
                 if server_emos.contains_key(&emoji_id) {
@@ -152,7 +150,6 @@ impl Wordy {
                 let chan_id = capts.get(1).unwrap().as_str().parse().unwrap();
                 match http.get_channel(chan_id).await {
                     Ok(Channel::Guild(channel)) => (Token::Text(format!("#{}", channel.name)), v),
-                    Ok(Channel::Category(channel)) => (Token::Text(format!("#{}", channel.name)), v),
                     _ => (Token::Text("#deleted_channel".to_string()), v)
                 }
             } else {

@@ -1,15 +1,10 @@
 use std::collections::HashMap;
 use anyhow::anyhow;
 use serenity::{
-    model:: {
-        application::interaction::{
-            Interaction,
-        },
+    all::Interaction, async_trait, model:: {
         gateway::Ready,
-        guild::Guild, prelude::{Message, GuildId, EmojiId, Emoji},
-    },
-    async_trait,
-    prelude::*
+        guild::Guild, prelude::{Emoji, EmojiId, GuildId, Message},
+    }, prelude::*
 };
 use log::{info, trace, warn};
 use crate::discord_util::{is_writable, Bot};
@@ -20,7 +15,7 @@ use crate::wordy::Wordy;
 impl EventHandler for Wordy {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
-            Interaction::ApplicationCommand(command) => {
+            Interaction::Command(command) => {
                 let command_name = command.data.name.to_string();
                 // only answer if the bot has access to the channel
                 if is_writable(&ctx, command.channel_id).await {
@@ -50,7 +45,7 @@ impl EventHandler for Wordy {
         info!(target: "wordy", "{} is connected!", ready.user.name);
     }
 
-    async fn guild_create(&self, ctx: Context, guild: Guild, _is_new: bool) {
+    async fn guild_create(&self, ctx: Context, guild: Guild, _is_new: Option<bool>) {
         self.register_commands(ctx.http.clone(), guild.id).await;
         self.register_guild(ctx.http, guild).await;
     }

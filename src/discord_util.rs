@@ -1,18 +1,13 @@
 use std::sync::Arc;
 use serenity::{
-    http::Http, 
-    model:: {
-        application::interaction::{
-            application_command::ApplicationCommandInteraction, 
-            InteractionResponseType::ChannelMessageWithSource,
-        },
-        prelude::{ChannelId, Channel, GuildChannel, Message}, Timestamp,
-    },
-    prelude::*, async_trait
+    all::{CommandInteraction, CreateAttachment, CreateInteractionResponse, CreateInteractionResponseFollowup, CreateInteractionResponseMessage, GetMessages}, async_trait, http::Http, model:: {
+        prelude::{Channel, ChannelId, GuildChannel, Message}, Timestamp,
+    }, prelude::*
 };
 use anyhow::{Result, Context as ContextErr};
+const DISCORD_READ_LIMIT: u64 = 100;
 
-type Command = ApplicationCommandInteraction;
+type Command = CommandInteraction;
 pub struct Attachment { pub file: Vec<u8>, pub filename: String }
 
 
@@ -28,31 +23,23 @@ impl Bot for Http {
     async fn answer(&self, command: &Command, content: &str, files: Vec<Attachment>) -> Result<()> {
         (
             command
-            .create_interaction_response(self, |response| {
-                response
-                .kind(ChannelMessageWithSource)
-                .interaction_response_data(|answer| {
-                    answer.content(content);
-                    files.iter().for_each(|Attachment {file, filename}| {
-                        answer.add_file((file.as_slice(), filename.as_str())); 
-                    });
-                    answer
-                })
-            }).await
+            .create_response(self, 
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
+                        .content(content)
+                        .add_files(files.into_iter().map(|a| CreateAttachment::bytes(a.file, a.filename)))
+                )).await
         ).context("Command create response failed")
     }
 
     async fn followup(&self, command: &Command, content: &str, files: Vec<Attachment>) -> Result<()> {
         (
             command
-            .create_followup_message(self, |answer| {
-                answer.content(content);
-                files.iter().for_each(|Attachment {file, filename}| {
-                    answer.add_file((file.as_slice(), filename.as_str())); 
-                });
-                answer
-
-            }).await
+            .create_followup(self, 
+                CreateInteractionResponseFollowup::new()
+                    .content(content)
+                    .add_files(files.into_iter().map(|a| CreateAttachment::bytes(a.file, a.filename)))
+            ).await
         ).context("Command create followup failed")?;
         Ok(())
     }
@@ -78,10 +65,11 @@ pub async fn read_past(http: &Arc<Http>, channel: &GuildChannel, limit: u64, cut
     let mut remaining = limit;
     'outer: while remaining > 0 {
         if let Ok(messages) = channel.messages(
-            &http, |retriever| if let Some(message) = res.last() {
-                retriever.before(message.id).limit(remaining)
+            &http, 
+            if let Some(message) = res.last() {
+                GetMessages::new().before(message.id).limit(remaining.min(DISCORD_READ_LIMIT) as u8)
             } else {
-                retriever.limit(remaining)
+                GetMessages::new().limit(remaining.min(DISCORD_READ_LIMIT) as u8)
             }
         ).await {
             if messages.len() == 0 {
