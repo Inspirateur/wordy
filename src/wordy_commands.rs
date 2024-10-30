@@ -73,7 +73,7 @@ impl Wordy {
         ctx.http
             .answer(
                 &command,
-                "Made with ❤️ by Inspi#8989\n
+                "Made with ❤️ by inspirateur\n
                 Repository: <https://github.com/Inspirateur/wordy>",
                 vec![],
             )
@@ -83,7 +83,7 @@ impl Wordy {
     pub async fn register_commands(&self, http: Arc<Http>, guild_id: GuildId) {
         trace!(target: "wordy", "Registering slash commands for Guild {}", guild_id);
         if let Err(why) = GuildId::set_commands(guild_id, http, vec![
-            CreateCommand::new("cloud").description("Discover the word cloud that defines you !"),
+            CreateCommand::new("cloud").description("Discover the word cloud that defines you!"),
             CreateCommand::new("emojis").description("Recent emoji usage stats."),
             CreateCommand::new("info").description("Information about this bot.")
         ]).await {
