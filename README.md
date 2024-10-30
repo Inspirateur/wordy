@@ -30,4 +30,4 @@ The Discord Application creation step is usually the same for all bots that you 
 - Once the messages are loaded (it also works beforehand, which will however not give an extensive result), you can run the bot's slash command `/cloud` to display your word cloud!
 
 #### This is how a word cloud might look like:
-![Demonstration word cloud](test.png)
+![Demonstration word cloud](demo.png)
