@@ -130,7 +130,7 @@ impl Wordy {
     async fn to_wc_tokens(
         &self, tokens: Vec<(String, f32)>, http: &Arc<Http>
     ) -> Vec<(Token, f32)> {
-        join_all(tokens.into_iter().map(|(token, v)| async move {
+        let mut res = join_all(tokens.into_iter().map(|(token, v)| async move {
             if let Some(capts) = RE_EMO.captures(&token) {
                 let emo_id = capts.get(2).unwrap().as_str();
                 if let Ok(img) = self.discord_emos.get(emo_id).await {
@@ -155,7 +155,13 @@ impl Wordy {
             } else {
                 (Token::Text(token), v)
             }
-        }).collect_vec()).await
+        }).collect_vec()).await;
+        res.sort_by(|(_, s1), (_, s2)| s2.partial_cmp(s1).unwrap());
+        // only keep the top 100
+        res.truncate(100);
+        // "squish" importance values
+        res.iter_mut().for_each(|(_, v)| *v = v.sqrt());
+        res
     }
 
     pub async fn cloud(&self, ctx: &Context, member: &Member) -> RgbaImage {
