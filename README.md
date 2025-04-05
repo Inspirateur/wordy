@@ -31,3 +31,7 @@ The Discord Application creation step is usually the same for all bots that you 
 
 #### This is how a word cloud might look like:
 ![Demonstration word cloud](demo.png)
+
+### Missing Access issue
+![image](https://github.com/user-attachments/assets/e2e1b62f-62d8-4df8-9d9a-5ff71bfb1d27)  
+Messages like this are caused by private channels. To fix it you need to explicitely add the bot to the private channels of your server, with the "Read Message History" permission.
