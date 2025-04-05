@@ -1,5 +1,5 @@
 use std::{io::{Cursor, Seek, SeekFrom}, sync::Arc};
-use log::{trace, info, warn};
+use log::{info, trace, warn};
 use image::{write_buffer_with_format, ColorType, ImageFormat};
 use anyhow::{Result, bail, anyhow};
 use serenity::{all::{CommandInteraction, CreateCommand}, http::Http, model::{
@@ -111,9 +111,9 @@ impl Wordy {
             let servers_emos = Arc::clone(&self.servers_emos);
             tokio::spawn(async move {
                 for (_channel_id, channel) in channels {
-                    let messages = read_past(&http, &channel, READ_PAST, cutoff_date).await;
-                    let len = messages.len();
-                    for message in messages {
+                    let read_result = read_past(&http, &channel, READ_PAST, cutoff_date).await;
+                    let len = read_result.messages.len();
+                    for message in read_result.messages {
                         read_message(
                             guild.id,
                             message,
@@ -122,13 +122,20 @@ impl Wordy {
                             servers_emos.clone(),
                         );
                     }
-                    if len > 0 {
+                    if let Err(why) = read_result.result {
+                        if len == 0 {
+                            warn!(
+                                target: "wordy", "Couldn't read messages for {}/{}: {}", 
+                                guild.name, channel.name(), why
+                            );
+                        } else {
+                            warn!(
+                                target: "wordy", "Stoped after {} messages for {}/{}: {}", 
+                                len, guild.name, channel.name(), why
+                            );
+                        }
+                    } else if len > 0 {
                         info!(target: "wordy", "Read {} past messages in {}/{}", len, guild.name, channel.name())
-                    } else {
-                        warn!(
-                            target: "wordy", "Couldn't read past messages for {}/{} ([Read Message History] permission might be missing)", 
-                            guild.name, channel.name()
-                        );
                     }
                 }
             });
