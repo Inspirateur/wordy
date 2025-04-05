@@ -36,7 +36,6 @@ fn get_token(name: &str) -> Option<String> {
 async fn main() {
     env_logger::builder()
         .filter_module("wordy", LevelFilter::Trace)
-        .filter_module("wordcloud", LevelFilter::Warn)
         .init();
     // Configure the client with your Discord bot token in the environment.
     let token = get_token("WORDY_TOKEN").unwrap();
