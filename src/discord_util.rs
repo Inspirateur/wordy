@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use serenity::{
     all::{CommandInteraction, CreateAttachment, CreateInteractionResponse, CreateInteractionResponseFollowup, CreateInteractionResponseMessage, GetMessages, Permissions}, async_trait, http::Http, model:: {
-        prelude::{Channel, ChannelId, GuildChannel, Message}, Timestamp,
+        prelude::{GuildChannel, Message}, Timestamp,
     }, prelude::*
 };
 use anyhow::{Result, Context as ContextErr};
@@ -43,22 +43,6 @@ impl Bot for Http {
         ).context("Command create followup failed")?;
         Ok(())
     }
-}
-
-pub async fn is_writable(ctx: &Context, channel_id: ChannelId) -> bool {
-    let Ok(Channel::Guild(channel)) = channel_id.to_channel(&ctx.http).await else {
-        return false;
-    };
-
-    let Ok(guild) = ctx.http.get_guild(channel.guild_id).await else {
-        return false;
-    };
-    
-    let Ok(wordy) = ctx.http.get_current_user_guild_member(channel.guild_id).await else {
-        return false;
-    };
-
-    return guild.user_permissions_in(&channel, &wordy).send_messages();
 }
 
 pub struct ReadResult {
